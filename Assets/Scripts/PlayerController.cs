@@ -6,21 +6,44 @@ public class PlayerController : MonoBehaviour
 {
     /// <summary>プレイヤーのrigidbody</summary>
     Rigidbody _prb;
+    /// <summary>プレイヤーの進行方向</summary>
+    private Vector3 _dir;
     /// <summary>プレイヤーの移動速度 </summary>
-    [SerializeField] float _moveSpeed;
+    [SerializeField] private float _moveSpeed;
+    /// <summary>プレイヤーの回転</summary>
+    private Quaternion _rotate;
+    [SerializeField] private float _rotateSpeed;
     /// <summary>弾丸のプレハブ</summary>
     [SerializeField] GameObject _bullet = null;
     /// <summary>弾丸の発射位置</summary>
     [SerializeField] GameObject _leftMuzzle = null;
     [SerializeField] GameObject _rightMuzzle = null;
+
+    private float _h, _v;
     private void Start()
     {
         _prb = GetComponent<Rigidbody>();
     }
 
-    private void Update()
+    void Update()
     {
-        Movement();
+        _h = Input.GetAxisRaw("Horizontal");
+        _v = Input.GetAxisRaw("Vertical");
+    }
+
+    private void FixedUpdate()
+    {
+        if (_h != 0 || _v != 0)
+        {
+            Vector2 velocity = new Vector2(_h, _v);
+            Movement(velocity);
+        }
+        else
+        {
+            _dir = Vector3.zero;
+            _rotate = this.transform.rotation;
+        }
+
         if (Input.GetMouseButton(0))
         {
             FireL();
@@ -31,24 +54,21 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    void Movement()
+    private void Movement(Vector2 vec)
     {
-        if (Input.GetKey(KeyCode.W))    //前進
+        //プレイヤーの移動方向を決める
+        _dir = new Vector3(vec.x, 0, vec.y);
+        _dir = Camera.main.transform.TransformDirection(_dir);
+        _dir.y = 0; 
+        _dir = _dir.normalized;
+
+        if (_dir.magnitude > 0)
         {
-            _prb.velocity = transform.forward * _moveSpeed;
+            _rotate = Quaternion.LookRotation(_dir, Vector3.up);
         }
-        if (Input.GetKey(KeyCode.S))    //後退
-        {
-            _prb.velocity = -transform.forward * _moveSpeed;
-        }
-        if (Input.GetKey(KeyCode.D))    //右移動
-        {
-            _prb.velocity = transform.right * _moveSpeed;
-        }
-        if (Input.GetKey(KeyCode.A))    //左移動
-        {
-            _prb.velocity = -transform.right * _moveSpeed;
-        }
+        transform.rotation = Quaternion.RotateTowards(transform.rotation, _rotate, _rotateSpeed);
+
+        _prb.AddForce(_dir * _moveSpeed, ForceMode.Force);
     }
 
     void FireL()
